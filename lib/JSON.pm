@@ -7,13 +7,13 @@ use base qw(Exporter);
 @JSON::EXPORT = qw(from_json to_json jsonToObj objToJson encode_json decode_json);
 
 BEGIN {
-    $JSON::VERSION = '2.16';
+    $JSON::VERSION = '2.17';
     $JSON::DEBUG   = 0 unless (defined $JSON::DEBUG);
 }
 
 my $Module_XS  = 'JSON::XS';
 my $Module_PP  = 'JSON::PP';
-my $XS_Version = '2.26';
+my $XS_Version = '2.27';
 
 
 # XS and PP common methods
@@ -414,6 +414,7 @@ sub support_by_pp {
         bless  $proto, $pkg;
     };
 
+
     for my $method (@methods) {
         my $flag = uc($method);
         my $type |= (UNSUPPORTED_ENCODE_FLAG->{$flag} || 0);
@@ -441,9 +442,20 @@ sub support_by_pp {
 
 package JSON::Backend::XS::Supportable;
 
+{
+    my $JSON_XS_encode_orignal = \&JSON::XS::encode;
+    my $JSON_XS_decode_orignal = \&JSON::XS::decode;
+    my $JSON_XS_incr_parse_orignal = \&JSON::XS::incr_parse;
 
-my $JSON_XS_encode_orignal = \&JSON::XS::encode;
-my $JSON_XS_decode_orignal = \&JSON::XS::decode;
+    local $^W;
+    *JSON::XS::decode = \&JSON::Backend::XS::Supportable::_decode;
+    *JSON::XS::encode = \&JSON::Backend::XS::Supportable::_encode;
+    *JSON::XS::incr_parse = \&JSON::Backend::XS::Supportable::_incr_parse;
+
+    *{JSON::XS::_original_decode} = $JSON_XS_decode_orignal;
+    *{JSON::XS::_original_encode} = $JSON_XS_encode_orignal;
+    *{JSON::XS::_original_incr_parse} = $JSON_XS_incr_parse_orignal;
+}
 
 $Carp::Internal{'JSON::Backend::XS::Supportable'} = 1;
 
@@ -461,16 +473,6 @@ sub _make_unsupported_method {
         else {
             ${$_[0]} &= ~$type;
         }
-
-        if (${$_[0]}) {
-            *JSON::XS::encode = \&JSON::Backend::XS::Supportable::_encode;
-            *JSON::XS::decode = \&JSON::Backend::XS::Supportable::_decode;
-        }
-        else {
-            *JSON::XS::encode = $JSON_XS_encode_orignal;
-            *JSON::XS::decode = $JSON_XS_decode_orignal;
-        }
-
         $_[0];
     };
 
@@ -507,19 +509,38 @@ sub _set_for_pp {
     return $pp;
 }
 
-
 sub _encode { # using with PP encod
-    _set_for_pp('encode' => @_)->encode($_[1]);
+    if (${$_[0]}) {
+        _set_for_pp('encode' => @_)->encode($_[1]);
+    }
+    else {
+        $_[0]->_original_encode( $_[1] );
+    }
 }
 
 
 sub _decode { # if unsupported-flag is set, use PP
-    _set_for_pp('decode' => @_)->decode($_[1]);
+    if (${$_[0]}) {
+        _set_for_pp('decode' => @_)->decode($_[1]);
+    }
+    else {
+        $_[0]->_original_decode( $_[1] );
+    }
 }
 
 
 sub decode_prefix { # if unsupported-flag is set, use PP
     _set_for_pp('decode' => @_)->decode_prefix($_[1]);
+}
+
+
+sub _incr_parse {
+    if (${$_[0]}) {
+        _set_for_pp('decode' => @_)->incr_parse($_[1]);
+    }
+    else {
+        $_[0]->_original_incr_parse( $_[1] );
+    }
 }
 
 
@@ -586,9 +607,9 @@ JSON - JSON (JavaScript Object Notation) encoder/decoder
 
 =head1 VERSION
 
-    2.16
+    2.17
 
-This version is compatible with JSON::XS B<2.26> and later.
+This version is compatible with JSON::XS B<2.27> and later.
 
 
 =head1 DESCRIPTION
@@ -2058,7 +2079,7 @@ The relese of this new version owes to the courtesy of Marc Lehmann.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2005-2009 by Makamaka Hannyaharamitu
+Copyright 2005-2010 by Makamaka Hannyaharamitu
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 

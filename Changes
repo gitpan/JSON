@@ -13,6 +13,18 @@ In this version, JSON was totally rewritten.
 
 ##########################################################################
 
+ !! Since 2.16, PP's relaxed option caused an infinite loop in some condition.
+ !! Recommend to update old versions.
+
+2.17  Thu Jan  7 12:23:13 2010
+	[JSON]
+	- fixed a problem caused by JSON::XS backend and support_by_pp option
+	  (rt#52842,  rt#52847 by ikegami)
+	[JSON::PP]
+	- made compatible with JSON::XS 2.27
+	- patched decode for incr_parse (rt#52820 by ikegami)
+	- relaxed option caused an infinite loop in some condition.
+
 2.16  Fri Oct 16 15:07:37 2009
 	[JSON][JSON::PP]
 	- made compatible with JSON::XS 2.26

@@ -11,7 +11,7 @@ use Carp ();
 use B ();
 #use Devel::Peek;
 
-$JSON::PP::VERSION = '2.26000';
+$JSON::PP::VERSION = '2.27000';
 
 @JSON::PP::EXPORT = qw(encode_json decode_json from_json to_json);
 
@@ -707,7 +707,13 @@ BEGIN {
                     : (!$octets[2]                ) ? 'UTF-32LE'
                     : 'unknown';
 
-        my $result = value();
+#        my $result = value();
+
+        my $eof = !( my ( $result ) = value() ); # $eof for incr_parse
+
+        if ( $eof && ( $opt & 0x00000001 ) ) {
+            return undef;
+        }
 
         if (!$idx->[ P_ALLOW_NONREF ] and !ref $result) {
                 decode_error(
@@ -891,7 +897,7 @@ BEGIN {
             else{
                 if ($relaxed and $ch eq '#') { # correctly?
                     pos($text) = $at;
-                    $text =~ /\G([^\n]*(?:\r\n|\r|\n))/g;
+                    $text =~ /\G([^\n]*(?:\r\n|\r|\n|$))/g;
                     $at = pos($text);
                     next_chr;
                     next;
@@ -1227,9 +1233,6 @@ BEGIN {
             $no_rep ? "$error" : "$error, at character offset $at (before \"$mess\")"
         );
 
-#        Carp::croak (
-#            $no_rep ? "$error" : "$error, at character offset $at [\"$mess\"]"
-#        );
     }
 
 
@@ -1341,6 +1344,8 @@ use constant INCR_M_WS   => 0; # initial whitespace skipping
 use constant INCR_M_STR  => 1; # inside string
 use constant INCR_M_BS   => 2; # inside backslash
 use constant INCR_M_JSON => 3; # outside anything, count nesting
+use constant INCR_M_C0   => 4;
+use constant INCR_M_C1   => 5;
 
 $JSON::PP::IncrParser::VERSION = '1.01';
 
@@ -1450,6 +1455,12 @@ sub _incr_parse {
             elsif ( $s eq ']' or $s eq '}' ) {
                 last if ( --$self->{incr_nest} <= 0 );
             }
+            elsif ( $s eq '#' ) {
+                while ( $len > $p ) {
+                    last if substr( $text, $p++, 1 ) eq "\n";
+                }
+            }
+
         }
 
     }
@@ -2125,7 +2136,7 @@ Makamaka Hannyaharamitu, E<lt>makamaka[at]cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2007-2009 by Makamaka Hannyaharamitu
+Copyright 2007-2010 by Makamaka Hannyaharamitu
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 
