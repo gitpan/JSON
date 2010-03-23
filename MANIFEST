@@ -1,15 +1,14 @@
 Changes
 lib/JSON.pm
 lib/JSON/PP.pm
-lib/JSON/PP58.pm
-lib/JSON/PP56.pm
-lib/JSON/PP5005.pm
 lib/JSON/PP/Boolean.pm
+lib/JSON/PP5005.pm
+lib/JSON/PP56.pm
+lib/JSON/PP58.pm
 Makefile.PL
 MANIFEST
+META.yml			Module meta-data (added by MakeMaker)
 README
-
-t/_unicode_handling.pm
 t/00_load.t
 t/00_pod.t
 t/01_utf8.t
@@ -33,7 +32,7 @@ t/20_unknown.t
 t/21_evans_bugrep.t
 t/22_comment_at_eof.t
 t/99_binary.t
-
+t/_unicode_handling.pm
 t/e00_func.t
 t/e01_property.t
 t/e02_bool.t
@@ -47,7 +46,7 @@ t/e09_encode.t
 t/e10_bignum.t
 t/e11_conv_blessed_univ.t
 t/e12_upgrade.t
-
+t/e13_overloaded_eq.t
 t/x00_load.t
 t/x02_error.t
 t/x12_blessed.t
@@ -61,5 +60,3 @@ t/xe08_decode.t
 t/xe10_bignum.t
 t/xe11_conv_blessed_univ.t
 t/xe12_boolean.t
-
-META.yml                                 Module meta-data (added by MakeMaker)

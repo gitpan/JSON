@@ -11,7 +11,7 @@ use Carp ();
 use B ();
 #use Devel::Peek;
 
-$JSON::PP::VERSION = '2.27000';
+$JSON::PP::VERSION = '2.27001';
 
 @JSON::PP::EXPORT = qw(encode_json decode_json from_json to_json);
 
@@ -323,12 +323,15 @@ sub allow_bigint {
 
                 if ( $convert_blessed and $obj->can('TO_JSON') ) {
                     my $result = $obj->TO_JSON();
-                    if ( defined $result and $obj eq $result ) {
-                        encode_error( sprintf(
-                            "%s::TO_JSON method returned same object as was passed instead of a new one",
-                            ref $obj
-                        ) );
+                    if ( defined $result and overload::Overloaded( $obj ) ) {
+                        if ( overload::StrVal( $obj ) eq $result ) {
+                            encode_error( sprintf(
+                                "%s::TO_JSON method returned same object as was passed instead of a new one",
+                                ref $obj
+                            ) );
+                        }
                     }
+
                     return $self->object_to_json( $result );
                 }
 
@@ -819,6 +822,7 @@ BEGIN {
                     }
                     else{
                         unless ($loose) {
+                            $at -= 2;
                             decode_error('illegal backslash escape sequence in string');
                         }
                         $s .= $ch;
@@ -1216,6 +1220,7 @@ BEGIN {
                     : $c == 0x0d ? '\r'
                     : $c == 0x0c ? '\f'
                     : $c <  0x20 ? sprintf('\x{%x}', $c)
+                    : $c == 0x5c ? '\\\\'
                     : $c <  0x80 ? chr($c)
                     : sprintf('\x{%x}', $c)
                     ;
@@ -1566,9 +1571,12 @@ See to L<JSON::XS/A FEW NOTES ON UNICODE AND PERL> and L<UNICODE HANDLING ON PER
 
 =item * round-trip integrity
 
-When you serialise a perl data structure using only datatypes supported by JSON,
-the deserialised data structure is identical on the Perl level.
-(e.g. the string "2.0" doesn't suddenly become "2" just because it looks like a number).
+When you serialise a perl data structure using only data types supported
+by JSON and Perl, the deserialised data structure is identical on the Perl
+level. (e.g. the string "2.0" doesn't suddenly become "2" just because
+it looks like a number). There I<are> minor exceptions to this, read the
+MAPPING section below to learn about those.
+
 
 =item * strict checking of JSON correctness
 
