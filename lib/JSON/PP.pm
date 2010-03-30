@@ -11,7 +11,7 @@ use Carp ();
 use B ();
 #use Devel::Peek;
 
-$JSON::PP::VERSION = '2.27001';
+$JSON::PP::VERSION = '2.27002';
 
 @JSON::PP::EXPORT = qw(encode_json decode_json from_json to_json);
 
@@ -1706,7 +1706,7 @@ C<space_after> flags in one call to generate the most readable
     
     $enabled = $json->get_indent
 
-The default indent space lenght is three.
+The default indent space length is three.
 You can use C<indent_length> to change the length.
 
 =head2 space_before

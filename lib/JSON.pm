@@ -7,7 +7,7 @@ use base qw(Exporter);
 @JSON::EXPORT = qw(from_json to_json jsonToObj objToJson encode_json decode_json);
 
 BEGIN {
-    $JSON::VERSION = '2.18';
+    $JSON::VERSION = '2.19';
     $JSON::DEBUG   = 0 unless (defined $JSON::DEBUG);
 }
 
@@ -578,36 +578,37 @@ JSON - JSON (JavaScript Object Notation) encoder/decoder
 
  use JSON; # imports encode_json, decode_json, to_json and from_json.
  
- $json_text   = to_json($perl_scalar);
- $perl_scalar = from_json($json_text);
+ # simple and fast interfaces (expect/generate UTF-8)
  
- # option-acceptable
- $json_text   = to_json($perl_scalar, {ascii => 1});
- $perl_scalar = from_json($json_text, {utf8 => 1});
- 
- # OOP
- $json = new JSON;
- 
- $json_text   = $json->encode($perl_scalar);
- $perl_scalar = $json->decode($json_text);
- 
- # pretty-printing
- $json_text = $json->pretty->encode($perl_scalar);
- 
- # simple interface
  $utf8_encoded_json_text = encode_json $perl_hash_or_arrayref;
  $perl_hash_or_arrayref  = decode_json $utf8_encoded_json_text;
  
+ # OO-interface
+ 
+ $json = JSON->new->allow_nonref;
+ 
+ $json_text   = $json->encode( $perl_scalar );
+ $perl_scalar = $json->decode( $json_text );
+ 
+ $pretty_printed = $json->pretty->encode( $perl_scalar ); # pretty-printing
  
  # If you want to use PP only support features, call with '-support_by_pp'
- # When XS unsupported feature is enable, using PP de/encode.
+ # When XS unsupported feature is enable, using PP (de|en)code instead of XS ones.
  
  use JSON -support_by_pp;
-
-
+ 
+ # option-acceptable interfaces (expect/generate UNICODE by default)
+ 
+ $json_text   = to_json( $perl_scalar, { ascii => 1, pretty => 1 } );
+ $perl_scalar = from_json( $json_text, { utf8  => 1 } );
+ 
+ # Between (en|de)code_json and (to|from)_json, if you want to write
+ # a code which communicates to an outer world (encoded in UTF-8),
+ # recommend to use (en|de)code_json.
+ 
 =head1 VERSION
 
-    2.18
+    2.19
 
 This version is compatible with JSON::XS B<2.27> and later.
 
@@ -686,11 +687,11 @@ See to L<JSON::XS/FEATURES> and L<JSON::PP/FEATURES>.
 
 =item * fast
 
-This module returns a JSON::XS object itself if avaliable.
+This module returns a JSON::XS object itself if available.
 Compared to other JSON modules and other serialisers such as Storable,
 JSON::XS usually compares favourably in terms of speed, too.
 
-If not avaliable, C<JSON> returns a JSON::PP object instead of JSON::XS and
+If not available, C<JSON> returns a JSON::PP object instead of JSON::XS and
 it is very slow as pure-Perl.
 
 =item * simple to use
@@ -712,6 +713,29 @@ in whatever way you like.
 
 Some documents are copied and modified from L<JSON::XS/FUNCTIONAL INTERFACE>.
 C<to_json> and C<from_json> are additional functions.
+
+=head2 encode_json
+
+    $json_text = encode_json $perl_scalar
+
+Converts the given Perl data structure to a UTF-8 encoded, binary string.
+
+This function call is functionally identical to:
+
+    $json_text = JSON->new->utf8->encode($perl_scalar)
+
+=head2 decode_json
+
+    $perl_scalar = decode_json $json_text
+
+The opposite of C<encode_json>: expects an UTF-8 (binary) string and tries
+to parse that as an UTF-8 encoded JSON text, returning the resulting
+reference.
+
+This function call is functionally identical to:
+
+    $perl_scalar = JSON->new->utf8->decode($json_text)
+
 
 =head2 to_json
 
@@ -735,6 +759,8 @@ equivalent to:
 
    $json_text = JSON->new->utf8(1)->pretty(1)->encode($perl_scalar)
 
+If you want to write a modern perl code which communicates to outer world,
+you should use C<encode_json> (supposed that JSON data are encoded in UTF-8).
 
 =head2 from_json
 
@@ -759,27 +785,8 @@ equivalent to:
 
     $perl_scalar = JSON->new->utf8(1)->decode($json_text)
 
-=head2 encode_json
-
-    $json_text = encode_json $perl_scalar
-
-Converts the given Perl data structure to a UTF-8 encoded, binary string.
-
-This function call is functionally identical to:
-
-    $json_text = JSON->new->utf8->encode($perl_scalar)
-
-=head2 decode_json
-
-    $perl_scalar = decode_json $json_text
-
-The opposite of C<encode_json>: expects an UTF-8 (binary) string and tries
-to parse that as an UTF-8 encoded JSON text, returning the resulting
-reference.
-
-This function call is functionally identical to:
-
-    $perl_scalar = JSON->new->utf8->decode($json_text)
+If you want to write a modern perl code which communicates to outer world,
+you should use C<decode_json> (supposed that JSON data are encoded in UTF-8).
 
 =head2 JSON::is_bool
 
@@ -806,8 +813,67 @@ Returns C<undef>.
 See L<MAPPING>, below, for more information on how JSON values are mapped to
 Perl.
 
-=head1 COMMON OBJECT-ORIENTED INTERFACE
+=head1 HOW DO I DECODE A DATA FROM OUTER AND ENCODE TO OUTER
 
+This section supposes that your perl vresion is 5.8 or later.
+
+If you know a JSON text from an outer world - a network, a file content, and so on,
+is encoded in UTF-8, you should use C<decode_json> or C<JSON> module object
+with C<utf8> enable. And the decoded data contains UNICODE characters.
+
+  # from network
+  my $json        = JSON->new->utf8;
+  my $json_text   = CGI->new->param( 'json_data' );
+  my $perl_scalar = $json->decode( $json_text );
+  
+  # from file content
+  local $/;
+  open( my $fh, '<', 'json.data' );
+  $json_text   = <$fh>;
+  $perl_scalar = decode_json( $json_text );
+
+If your data is not encoded in UTF-8, firstly you should C<decode> it.
+
+  use Encode;
+  local $/;
+  open( my $fh, '<', 'json.data' ); # ex. this data is encoded in cp932.
+  $json_text = decode( 'cp932', <$fh> ); # UNICODE
+  
+  # or you can write the below code.
+  #
+  # open( my $fh, '<:encoding(cp932)', 'json.data' );
+  # $json_text = <$fh>;
+
+In this case, C<$json_text> is UNICODE string.
+So you can B<not> use C<decode_json> nor C<JSON> module object with C<utf8> enable.
+Instead of them, you use C<JSON> module object with C<utf8> disable or C<from_json>.
+
+  $perl_scalar = $json->utf8(0)->decode( $json_text );
+  # or
+  $perl_scalar = from_json( $json_text );
+
+And now, you want to convert your C<$perl_scalar> into JSON data and
+send it to an outer world - a network or a file content, and so on.
+
+If your data contains UNICODE strings and you want the converted data to be encoded
+in UTF-8, you should use C<encode_json> or C<JSON> module object with C<utf8> enable.
+
+  print encode_json( $perl_scalar ); # to a network? file? or display?
+  # or
+  print $json->utf8->encode( $perl_scalar );
+
+And if C<$perl_scalar> does not contain UNICODE, then your characters are latin1 for perl.
+So you can B<not> use C<encode_json> nor C<JSON> module object with C<utf8> enable.
+Instead of them, you use C<JSON> module object with C<utf8> disable or C<to_json>.
+
+  $outer_json_text = $json->utf8(0)->encode( $perl_scalar );
+  # or 
+  $outer_json_text = to_json( $perl_scalar );
+
+See to L<Encode>, L<perluniintro>.
+
+
+=head1 COMMON OBJECT-ORIENTED INTERFACE
 
 =head2 new
 
@@ -1343,7 +1409,7 @@ C<shrink>, C<max_depth> and C<max_size>.
    $boolean = $json->property('utf8');
     => 1
 
-Sets the propery with a given boolean value.
+Sets the property with a given boolean value.
 
     $json = $json->property($property_name => $boolean);
 
@@ -1860,7 +1926,7 @@ with C<from_json> and C<to_json>.
 =item Global variables are no longer available.
 
 C<JSON> class variables - C<$JSON::AUTOCONVERT>, C<$JSON::BareKey>, etc...
-- are not avaliable any longer.
+- are not available any longer.
 Instead, various features can be used through object methods.
 
 
