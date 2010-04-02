@@ -7,7 +7,7 @@ use base qw(Exporter);
 @JSON::EXPORT = qw(from_json to_json jsonToObj objToJson encode_json decode_json);
 
 BEGIN {
-    $JSON::VERSION = '2.19';
+    $JSON::VERSION = '2.20';
     $JSON::DEBUG   = 0 unless (defined $JSON::DEBUG);
 }
 
@@ -608,7 +608,7 @@ JSON - JSON (JavaScript Object Notation) encoder/decoder
  
 =head1 VERSION
 
-    2.19
+    2.20
 
 This version is compatible with JSON::XS B<2.27> and later.
 
@@ -845,7 +845,7 @@ If your data is not encoded in UTF-8, firstly you should C<decode> it.
   # $json_text = <$fh>;
 
 In this case, C<$json_text> is UNICODE string.
-So you can B<not> use C<decode_json> nor C<JSON> module object with C<utf8> enable.
+So you B<cannot> use C<decode_json> nor C<JSON> module object with C<utf8> enable.
 Instead of them, you use C<JSON> module object with C<utf8> disable or C<from_json>.
 
   $perl_scalar = $json->utf8(0)->decode( $json_text );
@@ -863,12 +863,18 @@ in UTF-8, you should use C<encode_json> or C<JSON> module object with C<utf8> en
   print $json->utf8->encode( $perl_scalar );
 
 And if C<$perl_scalar> does not contain UNICODE, then your characters are latin1 for perl.
-So you can B<not> use C<encode_json> nor C<JSON> module object with C<utf8> enable.
+So you B<cannot> use C<encode_json> nor C<JSON> module object with C<utf8> enable.
 Instead of them, you use C<JSON> module object with C<utf8> disable or C<to_json>.
 
-  $outer_json_text = $json->utf8(0)->encode( $perl_scalar );
+  $json_text = $json->utf8(0)->encode( $perl_scalar );
   # or 
-  $outer_json_text = to_json( $perl_scalar );
+  $json_text = to_json( $perl_scalar );
+
+  # and then print or convert to UNICODE
+  print $json_text;
+  
+  $unicode_json_text = encode( $encoding, $json_text );
+
 
 See to L<Encode>, L<perluniintro>.
 
@@ -1419,12 +1425,33 @@ With no argumnt, it returns all the above properties as a hash reference.
 
 =head1 INCREMENTAL PARSING
 
-In JSON::XS 2.2, incremental parsing feature of JSON texts was implemented.
-Please check to L<JSON::XS/INCREMENTAL PARSING>.
+Most of this section are copied and modified from L<JSON::XS/INCREMENTAL PARSING>.
 
-=over 4
+In some cases, there is the need for incremental parsing of JSON texts.
+This module does allow you to parse a JSON stream incrementally.
+It does so by accumulating text until it has a full JSON object, which
+it then can decode. This process is similar to using C<decode_prefix>
+to see if a full JSON object is available, but is much more efficient
+(and can be implemented with a minimum of method calls).
 
-=item [void, scalar or list context] = $json->incr_parse ([$string])
+The backend module will only attempt to parse the JSON text once it is sure it
+has enough text to get a decisive result, using a very simple but
+truly incremental parser. This means that it sometimes won't stop as
+early as the full parser, for example, it doesn't detect parenthese
+mismatches. The only thing it guarantees is that it starts decoding as
+soon as a syntactically valid JSON text has been seen. This means you need
+to set resource limits (e.g. C<max_size>) to ensure the parser will stop
+parsing in the presence if syntax errors.
+
+The following methods implement this incremental parser.
+
+=head2 incr_parse
+
+    $json->incr_parse( [$string] ) # void context
+    
+    $obj_or_undef = $json->incr_parse( [$string] ) # scalar context
+    
+    @obj_or_empty = $json->incr_parse( [$string] ) # list context
 
 This is the central parsing function. It can both append new text and
 extract objects from the stream accumulated so far (both of these
@@ -1452,7 +1479,13 @@ an error occurs, an exception will be raised as in the scalar context
 case. Note that in this case, any previously-parsed JSON texts will be
 lost.
 
-=item $lvalue_string = $json->incr_text
+Example: Parse some JSON arrays/objects in a given string and return them.
+
+    my @objs = JSON->new->incr_parse ("[5][7][1,2]");
+
+=head2 incr_text
+
+    $lvalue_string = $json->incr_text
 
 This method returns the currently stored JSON fragment as an lvalue, that
 is, you can manipulate it. This I<only> works when a preceding call to
@@ -1466,6 +1499,8 @@ This function is useful in two cases: a) finding the trailing text after a
 JSON object or b) parsing multiple JSON objects separated by non-JSON text
 (such as commas).
 
+    $json->incr_text =~ s/\s*,\s*//;
+
 In Perl 5.005, C<lvalue> attribute is not available.
 You must write codes like the below:
 
@@ -1473,14 +1508,18 @@ You must write codes like the below:
     $string =~ s/\s*,\s*//;
     $json->incr_text( $string );
 
-=item $json->incr_skip
+=head2 incr_skip
+
+    $json->incr_skip
 
 This will reset the state of the incremental parser and will remove the
 parsed text from the input buffer. This is useful after C<incr_parse>
 died, in which case the input buffer and incremental parser state is left
 unchanged, to skip the text parsed so far and to reset the parse state.
 
-=item $json->incr_reset
+=head2 incr_reset
+
+    $json->incr_reset
 
 This completely resets the incremental parser, that is, after this call,
 it will be as if the parser had never parsed anything.
@@ -1489,7 +1528,8 @@ This is useful if you want ot repeatedly parse JSON objects and want to
 ignore any trailing data, which means you have to reset the parser after
 each successful decode.
 
-=back
+See to L<JSON::XS/INCREMENTAL PARSING> for examples.
+
 
 =head1 JSON::PP SUPPORT METHODS
 
