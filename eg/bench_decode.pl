@@ -41,22 +41,7 @@ $result = timethese( -$wanttime,
 cmpthese( $result );
 
 print "-----------------------------------\n";
-print "->pretty->canonical->dcode()\n";
-print "-----------------------------------\n";
 
-$pp->pretty->canonical;
-$xs->pretty->canonical;
-
-$result = timethese( -$wanttime,
-    {
-        'JSON::PP' => sub { $pp->decode( $json ) },
-        'JSON::XS' => sub { $xs->decode( $json ) },
-    },
-    'none'
-);
-cmpthese( $result );
-
-print "-----------------------------------\n";
 
 __END__
 
@@ -64,9 +49,9 @@ __END__
 
 =head1 SYNOPSYS
 
-  bench_pp_xs.pl json-file
+  bench_decode.pl json-file
   # or
-  bench_pp_xs.pl json-file minimum-time
+  bench_decode.pl json-file minimum-time
 
 =head1 DESCRIPTION
 
