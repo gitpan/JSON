@@ -11,7 +11,7 @@ use Carp ();
 use B ();
 #use Devel::Peek;
 
-$JSON::PP::VERSION = '2.27004';
+$JSON::PP::VERSION = '2.27005';
 
 @JSON::PP::EXPORT = qw(encode_json decode_json from_json to_json);
 
@@ -365,34 +365,22 @@ sub allow_bigint {
         my ($pre, $post) = $indent ? $self->_up_indent() : ('', '');
         my $del = ($space_before ? ' ' : '') . ':' . ($space_after ? ' ' : '');
 
-        if ( my $tie_class = tied %$obj ) {
-            if ( $tie_class->can('TIEHASH') ) {
-                $tie_class =~ s/=.+$//;
-                tie %res, $tie_class;
-            }
-        }
-
-        # In the old Perl verions, tied hashes in bool context didn't work.
-        # So, we can't use such a way (%res ? a : b)
-        my $has;
-
-        for my $k (keys %$obj) {
-            my $v = $obj->{$k};
-            $res{$k} = $self->object_to_json($v) || $self->value_to_json($v);
-            $has = 1 unless ( $has );
+        my @result;
+        for my $k ( _sort( $self, $obj ) ) {
+            utf8::decode($k) if ($] < 5.008); # key for Perl 5.6
+            push @result, string_to_json( $self, $k )
+                          .  $del
+                          . ( $self->object_to_json( $obj->{$k} ) || $self->value_to_json( $obj->{$k} ) );
         }
 
         --$depth;
         $self->_down_indent() if ($indent);
 
-        return '{' . ( $has ? $pre : '' )                                                   # indent
-                   . ( $has ? join(",$pre", map { utf8::decode($_) if ($] < 5.008);         # key for Perl 5.6
-                                                string_to_json($self, $_) . $del . $res{$_} # key : value
-                                            } _sort( $self, \%res )
-                             ) . $post                                                      # indent
-                           : ''
-                     )
-             . '}';
+        return   '{' . ( @result ? $pre : '' )
+                     . join(",$pre",  @result )
+                     . ( @result ? $post : '' )
+               . '}'
+        ;
     }
 
 
@@ -404,13 +392,6 @@ sub allow_bigint {
                                          if (++$depth > $max_depth);
 
         my ($pre, $post) = $indent ? $self->_up_indent() : ('', '');
-
-        if (my $tie_class = tied @$obj) {
-            if ( $tie_class->can('TIEARRAY') ) {
-                $tie_class =~ s/=.+$//;
-                tie @res, $tie_class;
-            }
-        }
 
         for my $v (@$obj){
             push @res, $self->object_to_json($v) || $self->value_to_json($v);
