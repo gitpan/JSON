@@ -11,7 +11,7 @@ use Carp ();
 use B ();
 #use Devel::Peek;
 
-$JSON::PP::VERSION = '2.27005';
+$JSON::PP::VERSION = '2.27006';
 
 @JSON::PP::EXPORT = qw(encode_json decode_json from_json to_json);
 
@@ -39,6 +39,8 @@ use constant P_ESCAPE_SLASH         => 16;
 use constant P_AS_NONBLESSED        => 17;
 
 use constant P_ALLOW_UNKNOWN        => 18;
+
+use constant OLD_PERL => $] < 5.008 ? 1 : 0;
 
 BEGIN {
     my @xs_compati_bit_properties = qw(
@@ -357,7 +359,7 @@ sub allow_bigint {
     sub hash_to_json {
         my ($self, $obj) = @_;
         my ($k,$v);
-        my %res;
+        my @res;
 
         encode_error("json text or perl structure exceeds maximum nesting level (max_depth set too low?)")
                                          if (++$depth > $max_depth);
@@ -365,10 +367,9 @@ sub allow_bigint {
         my ($pre, $post) = $indent ? $self->_up_indent() : ('', '');
         my $del = ($space_before ? ' ' : '') . ':' . ($space_after ? ' ' : '');
 
-        my @result;
         for my $k ( _sort( $self, $obj ) ) {
-            utf8::decode($k) if ($] < 5.008); # key for Perl 5.6
-            push @result, string_to_json( $self, $k )
+            if ( OLD_PERL ) { utf8::decode($k) } # key for Perl 5.6 / be optimized
+            push @res, string_to_json( $self, $k )
                           .  $del
                           . ( $self->object_to_json( $obj->{$k} ) || $self->value_to_json( $obj->{$k} ) );
         }
@@ -376,11 +377,7 @@ sub allow_bigint {
         --$depth;
         $self->_down_indent() if ($indent);
 
-        return   '{' . ( @result ? $pre : '' )
-                     . join(",$pre",  @result )
-                     . ( @result ? $post : '' )
-               . '}'
-        ;
+        return   '{' . ( @res ? $pre : '' ) . ( @res ? join( ",$pre", @res ) . $post : '' )  . '}';
     }
 
 
