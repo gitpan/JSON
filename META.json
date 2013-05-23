@@ -39,8 +39,8 @@
    "release_status" : "stable",
    "resources" : {
       "repository" : {
-         "url" : "http://github.com/makamaka/JSON"
+         "url" : "https://github.com/makamaka/JSON"
       }
    },
-   "version" : "2.57"
+   "version" : "2.58"
 }

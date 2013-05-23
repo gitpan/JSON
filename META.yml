@@ -20,5 +20,5 @@ no_index:
 requires:
   Test::More: 0
 resources:
-  repository: http://github.com/makamaka/JSON
-version: 2.57
+  repository: https://github.com/makamaka/JSON
+version: 2.58
