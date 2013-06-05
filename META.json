@@ -31,6 +31,9 @@
          }
       },
       "runtime" : {
+         "recommends" : {
+            "JSON::XS" : "2.34"
+         },
          "requires" : {
             "Test::More" : "0"
          }
@@ -42,5 +45,5 @@
          "url" : "https://github.com/makamaka/JSON"
       }
    },
-   "version" : "2.58"
+   "version" : "2.59"
 }
