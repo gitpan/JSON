@@ -7,7 +7,7 @@ use base qw(Exporter);
 @JSON::EXPORT = qw(from_json to_json jsonToObj objToJson encode_json decode_json);
 
 BEGIN {
-    $JSON::VERSION = '2.59';
+    $JSON::VERSION = '2.61';
     $JSON::DEBUG   = 0 unless (defined $JSON::DEBUG);
     $JSON::DEBUG   = $ENV{ PERL_JSON_DEBUG } if exists $ENV{ PERL_JSON_DEBUG };
 }
@@ -15,7 +15,7 @@ BEGIN {
 my $Module_XS  = 'JSON::XS';
 my $Module_PP  = 'JSON::PP';
 my $Module_bp  = 'JSON::backportPP'; # included in JSON distribution
-my $PP_Version = '2.27200';
+my $PP_Version = '2.27203';
 my $XS_Version = '2.34';
 
 
@@ -190,12 +190,12 @@ sub backend {
 
 
 sub is_xs {
-    return $_[0]->module eq $Module_XS;
+    return $_[0]->backend eq $Module_XS;
 }
 
 
 sub is_pp {
-    return not $_[0]->xs;
+    return not $_[0]->is_xs;
 }
 
 
